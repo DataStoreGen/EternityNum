@@ -421,7 +421,7 @@ function st.toSuffix(value, digit: number?)
 	local SNum = math.fmod(exp, 3)
 	exp = math.floor(exp/3)-1
 	if exp <= -1 then return CutDig(bnum[1]*10^bnum[2], digit)
-	elseif exp < 3 then return CutDig(man*10^SNum) .. Sets[exp+1]
+	elseif exp < 3 then return CutDig(man*10^SNum, digit) .. Sets[exp+1]
 	end
 	local txt = ''
 	local function suffix1(n)
