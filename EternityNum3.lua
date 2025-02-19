@@ -290,7 +290,7 @@ function st.add(val1, val2)
 	if st.IsInf(val1) or st.IsInf(val2) then return Inf elseif st.IsZero(val1) then return val2 elseif st.IsZero(val2) then return val1 end
 	if val1.man == -val2.man and val1.metaExp == val2.metaExp and val1.exp == val2.exp then return ZERO end
 	local a, b
-	if val1.metaExp >= 2 or val2.metaExp >= 2 then return st.maxAbs(val1, val2) end
+	if val1.metaExp >= 2 or val2.metaExp >= 2 then return st.toString(st.maxAbs(val1, val2)) end
 	if st.cmpAbs(val1, val2) > 0 then a = val1; b = val2 else a = val2; b = val1 end
 	if a.metaExp == 0 and b.metaExp == 0 then return st.toString(st.fromNumber(a.man*a.exp + b.man*b.exp)) end
 	local la, lb = a.metaExp* math.sign(a.exp), b.metaExp * math.sign(b.exp)
