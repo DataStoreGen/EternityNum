@@ -1,4 +1,5 @@
 -- made by gojosatoru7304 or DataStore_Genius
+local ModuleCleaner = require(script.Parent.ModuleCleaner)
 local expl = 1e10
 local ldown = math.log10(expl)
 local msd = 100
@@ -55,7 +56,7 @@ function f_lamb(z)
 end
 
 function Cnew(man, metaExp, exp)
-	return {man = man, metaExp = metaExp, exp=exp}
+	return ModuleCleaner.new():RegisterTable('CnewFunc', {man = man, metaExp = metaExp, exp=exp})
 end
 
 local ZERO = Cnew(0, 0, 0)
@@ -78,6 +79,11 @@ function st.toStr(man, exp)
 	return man .. 'e' .. exp
 end
 
+function newMeta(man, meta, exp)
+	local result = ModuleCleaner.new():RegisterTable('Cnew', Cnew(man, meta, exp))
+	return result
+end
+
 function st.correct(value)
 	if st.IsNaN(value) then return NaN elseif st.IsInf(value) then return Inf elseif st.IsZero(value) then return ZERO end
 	local man, meta, exp = value.man, value.metaExp, value.exp
@@ -85,11 +91,11 @@ function st.correct(value)
 		exp, man = -exp, -man
 	end
 	if meta == 0 and exp < 1e-10 then
-		return Cnew(man, meta+1, math.log10(exp))
+		return newMeta(man, meta+1, math.log10(exp))
 	end
 	local abs, sign = math.abs(exp), math.sign(exp)
 	if abs >= expl then
-		return Cnew(man, meta+1, sign*math.log10(abs))
+		return newMeta(man, meta+1, sign*math.log10(abs))
 	end
 	while abs < ldown and meta > 0 do
 		meta -=1
@@ -101,7 +107,7 @@ function st.correct(value)
 	elseif exp == 0 then
 		man = 0
 	end
-	return Cnew(man, meta, exp)
+	return newMeta(man, meta, exp)
 end
 
 function st.new(man, metaExp, exp)
@@ -128,7 +134,7 @@ function st.fromSci(value)
 	end
 	if exp == 0 then return st.new(math.sign(man), 0, man) end
 	if man == 0 then return ZERO end
-	
+
 	if exp < 0 then
 		if exp < -100 then return ZERO end
 		local exp2 = math.log10(man)+exp
@@ -183,6 +189,7 @@ function st.convert(value)
 end
 
 function st.toNumber(value)
+	value = st.convert(value)
 	if value.metaExp > 1 then
 		if math.sign(value.exp) == -1 then
 			return value.man * 0
@@ -204,8 +211,8 @@ end
 
 function st.maxAbs(val1, val2)
 	val1, val2 = st.convert(val1), st.convert(val2)
-	if st.cmpAbs(val1, val2) < 0 then return val2 end
-	return val1
+	if st.cmpAbs(val1, val2) < 0 then return st.toString(val2) end
+	return st.toString(val1)
 end
 
 function st.cmpAbs(val1, val2)
@@ -417,7 +424,7 @@ end
 function st.toSuffix(value, digit: number?)
 	digit = digit or DefaultDigits
 	local bnum = st.toScience(value):split('e')
-	local man, exp = bnum[1], bnum[2]
+	local man: number, exp: number = bnum[1], bnum[2]
 	local SNum = math.fmod(exp, 3)
 	exp = math.floor(exp/3)-1
 	if exp <= -1 then return CutDig(bnum[1]*10^bnum[2], digit)
@@ -464,8 +471,10 @@ end
 function st.toLayer(value, digits: number?)
 	value = st.convert(value)
 	digits = digits or DefaultDigits
-
-	if st.leeq(value, ONE) then return '1/' .. st.short(st.div(ONE, value)) end
+	if st.between(value, ZERO, ONE) then
+		local den = st.short(st.div(ONE, value))
+		return '1/' .. den
+	end
 	if value.man == 1 then
 		if value.exp < 0 then
 			return 'E(' .. value.metaExp .. '-)' .. CutDig(math.abs(value.exp), digits)
@@ -552,7 +561,7 @@ end
 function st.lbencode(value)
 	value = st.convert(value)
 	if st.eq(value, 1) then return 1 elseif value.man == 0 then return 4e18 end
-	local man, meta, exp = value.man, value.metaExp, value.exp
+	local man: number, meta: number, exp: number = value.man, value.metaExp, value.exp
 	local mode = nil
 	if man == -1 then
 		if meta > 999 then
@@ -569,7 +578,7 @@ function st.lbencode(value)
 	end
 	local v = mode * 1e18
 	local logMeta = math.log10(meta)
-	local logExp = math.log10(math.abs(exp))
+	local logExp = math.log10(math.abs(exp):: number)
 	local scaler = 3.2440674117208e15
 	if mode == 8 then
 		v += (logMeta+(logExp/10)) * scaler
@@ -601,10 +610,10 @@ function st.lbdecode(value)
 	if value == 7e18 then return st.new(1, 10000, 1) end
 	if value == 5e18 then return st.new(1, 10000, -1) end
 	if value == 1 then return ONE end
-	local mode = math.floor(value / 1e18)
+	local mode: number = math.floor(value:: number / 1e18)
 	if mode == 4 then return ZERO end
 	local function decode(offset, neg)
-		local v = value - offset
+		local v: number = value - offset
 		if neg then v = 1e18 - v end
 		v = v / 3.2440674117208e15
 		local meta = math.floor(v)
@@ -689,5 +698,13 @@ function st.exporand(min, max)
 	max = st.mul(st.exp(st.abs(max)), s2)
 	return st.exp(st.random(min, max))
 end
+
+function st.Changed(value, func: (newValue: string, label: TextLabel|TextButton) ->(), label: TextLabel|TextButton)
+	value.Changed:Connect(function(newValue)
+		func(newValue, label)
+	end)
+end
+
+ModuleCleaner.new():RegisterTable('EternityNum3', st)
 
 return st
